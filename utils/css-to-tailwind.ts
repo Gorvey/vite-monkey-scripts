@@ -31,13 +31,13 @@ const rules: CSSRule[] = [
   ['color', 'text-[#]'],
   ['line-height', 'leading-[#]'],
   ['border-radius', 'rounded-[#]'],
-  [
-    'border',
-    (value: string) => {
-      const [width, style, color] = value.split(' ')
-      return `border-[${width}] border-${style} border-[${color}]`
-    },
-  ],
+  // [
+  //   'border',
+  //   (value: string) => {
+  //     const [width, style, color] = value.split(' ')
+  //     return `border-[${width}] border-${style} border-[${color}]`
+  //   },
+  // ],
   ['letter-spacing', 'tracking-[#]'],
   ['opacity', (value: string) => `opacity-${Math.round(parseFloat(value) * 100)}`],
   // ['text-decoration', '#'],

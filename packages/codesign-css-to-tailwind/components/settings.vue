@@ -73,6 +73,10 @@ const removePanel: TabsProps['onRemove'] = (options) => {
     value.value = index > 0 ? panelList.value[index - 1]?.value || 0 : 0
   }
 }
+
+const handleRefresh = () => {
+  window.dispatchEvent(new CustomEvent('codesign-css-to-tailwind-refresh'))
+}
 </script>
 
 <template>
@@ -85,6 +89,13 @@ const removePanel: TabsProps['onRemove'] = (options) => {
         class="!ml-2 unit-setting__trigger t-button t-size-m t-button--variant-text t-button--theme-default t-button--shape-square"
       >
         <span class="t-button__text"><i data-v-2f06d9a5="" class="com-icon iconfont-v2 icon-v2-setting"></i></span>
+      </button>
+      <button
+        @click="handleRefresh"
+        type="button"
+        class="!ml-2 unit-setting__trigger t-button t-size-m t-button--variant-text t-button--theme-default t-button--shape-square"
+      >
+        <span class="t-button__text">刷新</span>
       </button>
     </div>
     <t-dialog

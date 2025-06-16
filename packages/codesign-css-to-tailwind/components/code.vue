@@ -20,6 +20,7 @@ const activeCssVariable = computed(() => {
 watch(
   () => props.layerData,
   (newValue) => {
+    console.log('codeapp layerData change', newValue)
     localLayerData.value = toValue(newValue)
   },
   { deep: true, immediate: true },
@@ -61,6 +62,7 @@ const formatedCssVariableTailwindCode = computed(() => {
 
   return result
 })
+
 defineExpose({
   activeCssVariable,
   tailwindCode,
