@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { waitElement } from '../../../utils/waitElement'
 import { copyToClipboard } from '../../../utils/copyToClipboard'
+import { message } from '../../../utils/message'
 import type { LayerData } from '../types'
 
 /**
@@ -18,7 +19,10 @@ const isRectOverlap = (rect1: LayerData['rect'], rect2: LayerData['rect']): bool
 /**
  * 检查一个矩形是否完全包含另一个矩形
  */
-const isRectContained = (outer: LayerData['rect'], inner: LayerData['rect']): boolean => {
+const isRectContained = (
+  outer: { x: number; y: number; width: number; height: number },
+  inner: { x: number; y: number; width: number; height: number },
+): boolean => {
   return (
     outer.x <= inner.x &&
     outer.y <= inner.y &&
@@ -31,34 +35,33 @@ const isRectContained = (outer: LayerData['rect'], inner: LayerData['rect']): bo
  * 格式化图层数据用于HTML生成
  */
 const formatLayersForHtmlGeneration = (layers: LayerData[]) => {
-  return layers
-    .map((layer) => ({
-      type: layer.type,
-      name: layer.name,
-      x: layer.x,
-      y: layer.y,
-      width: layer.width,
-      height: layer.height,
-      css: layer.css,
-      fills: layer.fills?.map((fill) => ({
-        fillType: fill.fillType,
-        color: fill.color
-          ? {
-              'color-hex': fill.color['color-hex'],
-              'css-rgba': fill.color['css-rgba'],
-            }
-          : undefined,
-      })),
-      borders: layer.borders,
-      shadows: layer.shadows,
-      radius: layer.radius,
-      layerIndex: layer.layerIndex,
-    }))
-    .filter((v) => v.type === 'shape')
+  return layers.map((layer) => ({
+    type: layer.type,
+    name: layer.name,
+    x: layer.x,
+    y: layer.y,
+    width: layer.width,
+    height: layer.height,
+    css: layer.css,
+    // fills: layer.fills?.map((fill) => ({
+    //   fillType: fill.fillType,
+    //   color: fill.color
+    //     ? {
+    //         'color-hex': fill.color['color-hex'],
+    //         'css-rgba': fill.color['css-rgba'],
+    //       }
+    //     : undefined,
+    // })),
+    // borders: layer.borders,
+    // shadows: layer.shadows,
+    // radius: layer.radius,
+    layerIndex: layer.layerIndex,
+  }))
+  // .filter((v) => v.type === 'shape')
 }
 
 /**
- * 获取同一区域的所有图层数据
+ * 获取当前图层及其包含的所有图层数据
  */
 const getLayerDatas = async () => {
   console.log('getLayerDatas')
@@ -67,42 +70,112 @@ const getLayerDatas = async () => {
   let currentLayerData = vueData.layerData as LayerData
   let allLayerData = vueData.layerMap as Map<string, LayerData>
 
-  if (!currentLayerData?.rect) {
-    console.warn('当前图层没有 rect 信息')
+  if (!currentLayerData) {
+    console.warn('当前没有选中图层')
+    message.error('请先选中一个图层')
     return []
   }
 
-  const currentRect = currentLayerData.rect
-  const sameAreaLayers: LayerData[] = []
+  const currentLayerId = currentLayerData.id
+  const currentRect = {
+    x: currentLayerData.x,
+    y: currentLayerData.y,
+    width: currentLayerData.width,
+    height: currentLayerData.height,
+  }
+  const containedLayers: LayerData[] = []
 
-  // 遍历所有图层，找到同一区域的图层
+  // 遍历所有图层，找到当前图层本身以及被当前图层完全包含的图层
   allLayerData.forEach((layer: LayerData) => {
-    if (!layer.rect) return
+    const layerRect = {
+      x: layer.x,
+      y: layer.y,
+      width: layer.width,
+      height: layer.height,
+    }
 
-    // 检查是否重叠或包含关系
-    if (
-      isRectOverlap(currentRect, layer.rect) ||
-      isRectContained(currentRect, layer.rect) ||
-      isRectContained(layer.rect, currentRect)
-    ) {
-      sameAreaLayers.push(layer)
+    // 当前图层本身，或者被当前图层完全包含
+    if (layer.id === currentLayerId || isRectContained(currentRect, layerRect)) {
+      containedLayers.push(layer)
     }
   })
 
-  // 按图层索引排序
-  sameAreaLayers
+  // 按图层索引排序，过滤可见且不透明度为1的图层
+  const filteredLayers = containedLayers
     .sort((a, b) => (a.layerIndex || 0) - (b.layerIndex || 0))
     .filter((v) => v.visible)
     .filter((v) => v.opacity == 1)
 
-  console.log('同一区域的图层:', sameAreaLayers)
+  console.log('当前图层及其包含的图层:', filteredLayers)
   console.log('当前图层rect:', currentRect)
 
-  let formatedData = formatLayersForHtmlGeneration(sameAreaLayers)
-  copyToClipboard(JSON.stringify(formatedData, null, 2))
+  let formatedData = formatLayersForHtmlGeneration(filteredLayers)
+  const output = `---
+layerData结构描述:
+- type: 图层类型
+- name: 图层名称
+- x, y: 坐标位置
+- width, height: 尺寸
+- css: 样式信息
+- layerIndex: 图层索引
+
+layerDatas:
+${JSON.stringify(formatedData, null, 2)}`
+  copyToClipboard(output)
+  message.success('已复制到剪贴板')
 }
 </script>
 
 <template>
-  <div style="margin: 0px 10px; cursor: pointer" id="layer-data-btn" @click="getLayerDatas">获取layerDatas</div>
+  <button class="ai-glow-btn" id="layer-data-btn" @click="getLayerDatas">获取layerDatas</button>
 </template>
+
+<style scoped>
+.ai-glow-btn {
+  position: relative;
+  margin: 0 10px;
+  padding: 6px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.ai-glow-btn::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: conic-gradient(from 0deg, #00f5ff, #7b2cbf, #ff006e, #00f5ff);
+  border-radius: 10px;
+  z-index: -1;
+  animation: rotate-glow 2s linear infinite;
+}
+
+.ai-glow-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 8px;
+  z-index: -1;
+}
+
+@keyframes rotate-glow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>
