@@ -2,10 +2,12 @@ import { LayerData } from './types'
 import { createApp, App } from 'vue'
 import Settings from './components/settings.vue'
 import Code from './components/code.vue'
+import LayerDataComponent from './components/layerData.vue'
 import './styles/styles'
 // 引入组件库的少量全局样式变量
 import 'tdesign-vue-next/es/style/index.css'
 const CONFIG = {
+  screenInspect: '.screen-inspect',
   screenHeader: '.screen-header__section--right .screen-header__item',
   cssCodeNavs: '.css-node__codes--navs',
   cssCopyBtn: '.css-node__copy',
@@ -59,6 +61,16 @@ const handleScreenChange = async () => {
       (() => {
         const app = document.createElement('div')
         app.setAttribute('id', 'tailwind-setting-btn')
+        screenHeader.parentNode.insertBefore(app, screenHeader)
+        return app
+      })(),
+    )
+  }
+  if (!document.getElementById('layer-data-btn')) {
+    createApp(LayerDataComponent).mount(
+      (() => {
+        const app = document.createElement('div')
+        app.setAttribute('id', 'layer-data-btn')
         screenHeader.parentNode.insertBefore(app, screenHeader)
         return app
       })(),

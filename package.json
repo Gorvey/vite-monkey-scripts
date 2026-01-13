@@ -10,6 +10,8 @@
     "build:codesign-css-gen": "vite build --mode codesignCssToTailwind",
     "dev:copy-multi-zentao-bug-id": "vite --mode copyMultiZentaoBugId",
     "build:copy-multi-zentao-bug-id": "vite build --mode copyMultiZentaoBugId",
+    "dev:dify-ai-gen-code-embed": "vite --mode difyAiGenCodeEmbed",
+    "build:dify-ai-gen-code-embed": "vite build --mode difyAiGenCodeEmbed",
     "build": "vite build",
     "preview": "vue-tsc -b && vite preview"
   },
