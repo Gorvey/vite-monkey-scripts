@@ -10,6 +10,7 @@ const CONFIG = {
   screenInspect: '.screen-inspect',
   screenHeader: '.screen-header__section--right .screen-header__item',
   cssCodeNavs: '.css-node__codes--navs',
+  cssCodeItem: '.css-node__code--item',
   cssCopyBtn: '.css-node__copy',
   screenListWrapper: 'div[page-list][screen-list]', // 页面左侧页面list
   screenInspectorPanel: 'aside.screen-inspector', // 页面右侧标注信息panel
@@ -42,13 +43,13 @@ const handleScreenChange = async () => {
         codeAppContainer = null
       }
       // 重新挂载 codeApp
-      const codeNavs = document.querySelector(CONFIG.cssCodeNavs) as any
-      if (codeNavs) {
+      const cssCodeNavs = document.querySelector(CONFIG.cssCodeNavs) as any
+      if (cssCodeNavs) {
         codeAppInstance = createApp(Code, {
           layerData: layerData,
         }) as App
         codeAppContainer = document.createElement('div')
-        codeNavs.parentNode.insertBefore(codeAppContainer, codeNavs)
+        cssCodeNavs.parentNode.appendChild(codeAppContainer)
         codeAppInstance.mount(codeAppContainer)
       }
     },

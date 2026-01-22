@@ -46,4 +46,5 @@ export interface LayerData {
   symbolId?: string
   layers?: LayerData[]
   isSliceChild?: boolean
+  content?: string
 }

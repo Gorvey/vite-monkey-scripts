@@ -1,19 +1,10 @@
 <script setup lang="ts">
 import { TabsProps, TdSelectProps } from 'tdesign-vue-next'
 
-const visible = ref(false)
-const value = ref(0)
-const { data: activePanel, save: saveActivePanel } = useMonkeyStorage<string | number>({
-  key: 'codesign-css-to-tailwind-active-panel',
-  defaultValue: '',
-})
-const { data: data, save: savePanelList } = useMonkeyStorage<{ label: string; value: number; code: string }[]>({
-  key: 'codesign-css-to-tailwind-panels',
-  defaultValue: [
-    {
-      label: '示例',
-      value: 0,
-      code: `:root {
+/**
+ * CSS 变量示例代码
+ */
+const DEFAULT_CSS_VARIABLES = `:root {
   --td-brand-color: #154199;
   --td-brand-color-1: #f2f3ff;
   --td-brand-color-2: #d8e1ff;
@@ -27,15 +18,75 @@ const { data: data, save: savePanelList } = useMonkeyStorage<{ label: string; va
   --td-brand-color-10: #001b54;
   --td-brand-color-11: #6e8aff;
   --td-brand-color-12: #f8f9fc;
-}`,
+}`
+
+const visible = ref(false)
+const value = ref(0)
+const { data: activePanel, save: saveActivePanel } = useMonkeyStorage<string | number>({
+  key: 'codesign-css-to-tailwind-active-panel',
+  defaultValue: '',
+})
+const { data: data, save: savePanelList } = useMonkeyStorage<{ label: string; value: number; code: string }[]>({
+  key: 'codesign-css-to-tailwind-panels',
+  defaultValue: [
+    {
+      label: '示例',
+      value: 0,
+      code: DEFAULT_CSS_VARIABLES,
     },
   ],
 })
 const panelList = ref<{ label: string; value: number; code: string }[]>(data.value)
+
+/**
+ * 当前正在编辑的 tab 值
+ */
+const editingTabValue = ref<number | null>(null)
+
+/**
+ * 开始编辑 tab 标签
+ */
+const startEditLabel = (tabValue: number) => {
+  editingTabValue.value = tabValue
+}
+
+/**
+ * 完成编辑 tab 标签
+ */
+const finishEditLabel = () => {
+  editingTabValue.value = null
+}
+
+/**
+ * 监听编辑状态变化，自动聚焦输入框
+ */
+watch(editingTabValue, (newValue) => {
+  if (newValue !== null) {
+    nextTick(() => {
+      const inputRef = `label-input-${newValue}` as any
+      const inputElement = inputRef?.$el?.querySelector('input')
+      inputElement?.focus()
+      inputElement?.select()
+    })
+  }
+})
+
+/**
+ * 打开配置弹窗
+ */
 const openDialog = () => {
   panelList.value = data.value
   visible.value = true
 }
+
+// 监听来自其他组件的打开弹窗事件
+onMounted(() => {
+  window.addEventListener('open-css-variable-settings', openDialog)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('open-css-variable-settings', openDialog)
+})
 
 const confirmDialog = () => {
   savePanelList(panelList.value)
@@ -77,6 +128,10 @@ const removePanel: TabsProps['onRemove'] = (options) => {
 // const handleRefresh = () => {
 //   window.dispatchEvent(new CustomEvent('codesign-css-to-tailwind-refresh'))
 // }
+
+defineExpose({
+  openDialog,
+})
 </script>
 
 <template>
@@ -101,7 +156,7 @@ const removePanel: TabsProps['onRemove'] = (options) => {
     <t-dialog
       @close="closeDialog"
       @confirm="confirmDialog"
-      width="750px"
+      width="950px"
       :header="'配置颜色变量'"
       v-model:visible="visible"
     >
@@ -113,9 +168,33 @@ const removePanel: TabsProps['onRemove'] = (options) => {
           :label="item.label"
         >
           <template #label>
-            <t-input :readonly="item.value === 0" v-model="item.label" />
+            <div v-if="editingTabValue === item.value" class="tab-label-editor">
+              <t-input
+                :ref="`label-input-${item.value}`"
+                v-model="item.label"
+                :readonly="item.value === 0"
+                @blur="finishEditLabel"
+                @keyup.enter="finishEditLabel"
+                class="label-input"
+                size="small"
+              />
+            </div>
+            <div v-else class="tab-label-display">
+              <span class="tab-label-text">{{ item.label }}</span>
+              <i
+                @click="item.value !== 0 && startEditLabel(item.value)"
+                v-if="item.value !== 0"
+                class="edit-icon iconfont-v2 icon-v2-edit"
+              ></i>
+            </div>
           </template>
-          <t-textarea :autosize="{ minRows: 10, maxRows: 19 }" v-model="item.code" language="css" theme="vs-dark" />
+          <t-textarea
+            :autosize="{ minRows: 10, maxRows: 20 }"
+            v-model="item.code"
+            language="css"
+            theme="vs-dark"
+            :placeholder="DEFAULT_CSS_VARIABLES"
+          />
         </t-tab-panel>
       </t-tabs>
     </t-dialog>
@@ -130,5 +209,43 @@ const removePanel: TabsProps['onRemove'] = (options) => {
   input {
     user-select: none;
   }
+}
+
+.tab-label-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.tab-label-display:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.tab-label-text {
+  font-size: 14px;
+}
+
+.edit-icon {
+  font-size: 12px;
+  color: var(--td-text-color-secondary, #666);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.tab-label-display:hover .edit-icon {
+  opacity: 1;
+}
+
+.tab-label-editor {
+  display: flex;
+  align-items: center;
+}
+
+.tab-label-editor .label-input {
+  min-width: 80px;
 }
 </style>

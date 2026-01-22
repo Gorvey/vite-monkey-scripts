@@ -2,19 +2,8 @@
 import { waitElement } from '../../../utils/waitElement'
 import { copyToClipboard } from '../../../utils/copyToClipboard'
 import { message } from '../../../utils/message'
+import { replaceCssVariablesInArray } from '../../../utils/cssVariableReplacer'
 import type { LayerData } from '../types'
-
-/**
- * 检查两个矩形是否重叠
- */
-const isRectOverlap = (rect1: LayerData['rect'], rect2: LayerData['rect']): boolean => {
-  return !(
-    rect1.x + rect1.width <= rect2.x ||
-    rect2.x + rect2.width <= rect1.x ||
-    rect1.y + rect1.height <= rect2.y ||
-    rect2.y + rect2.height <= rect1.y
-  )
-}
 
 /**
  * 检查一个矩形是否完全包含另一个矩形
@@ -32,32 +21,60 @@ const isRectContained = (
 }
 
 /**
+ * 需要过滤的 CSS 属性
+ */
+const CSS_FILTER_PROPERTIES = ['font-family', 'text-align']
+
+/**
+ * 获取当前激活的 CSS 变量配置
+ */
+const getActiveCssVariable = (): string => {
+  const { data: activePanel } = useMonkeyStorage<string | number>({
+    key: 'codesign-css-to-tailwind-active-panel',
+    defaultValue: 0,
+  })
+  const { data: panelList } = useMonkeyStorage<{ label: string; value: number; code: string }[]>({
+    key: 'codesign-css-to-tailwind-panels',
+    defaultValue: [],
+  })
+  if (!panelList.value?.length) return ''
+  return panelList.value[Number(activePanel.value)].code || ''
+}
+
+/**
  * 格式化图层数据用于HTML生成
+ * @param layers - 图层数据数组
+ * @returns 格式化后的图层数据
  */
 const formatLayersForHtmlGeneration = (layers: LayerData[]) => {
-  return layers.map((layer) => ({
-    type: layer.type,
-    name: layer.name,
-    x: layer.x,
-    y: layer.y,
-    width: layer.width,
-    height: layer.height,
-    css: layer.css,
-    // fills: layer.fills?.map((fill) => ({
-    //   fillType: fill.fillType,
-    //   color: fill.color
-    //     ? {
-    //         'color-hex': fill.color['color-hex'],
-    //         'css-rgba': fill.color['css-rgba'],
-    //       }
-    //     : undefined,
-    // })),
-    // borders: layer.borders,
-    // shadows: layer.shadows,
-    // radius: layer.radius,
-    layerIndex: layer.layerIndex,
-  }))
-  // .filter((v) => v.type === 'shape')
+  const activeCssVariable = getActiveCssVariable()
+
+  return layers
+    .filter((layer) => {
+      return !layer?.css?.includes('background: transparent;')
+    })
+    .map((layer) => {
+      let filteredCss = layer.css?.filter((cssItem) => {
+        const trimmed = cssItem.trim()
+        return !CSS_FILTER_PROPERTIES.some((prop) => trimmed.startsWith(prop))
+      })
+
+      // CSS 变量替换
+      if (filteredCss && activeCssVariable) {
+        filteredCss = replaceCssVariablesInArray(filteredCss, activeCssVariable)
+      }
+
+      return {
+        type: layer.type,
+        name: layer.name,
+        x: layer.x,
+        y: layer.y,
+        width: layer.width,
+        height: layer.height,
+        css: filteredCss,
+        content: layer?.content || '',
+      }
+    })
 }
 
 /**
@@ -117,10 +134,12 @@ layerData结构描述:
 - x, y: 坐标位置
 - width, height: 尺寸
 - css: 样式信息
-- layerIndex: 图层索引
+- content: 图层内容
 
 layerDatas:
-${JSON.stringify(formatedData, null, 2)}`
+${JSON.stringify(formatedData, null, 2)}
+---
+`
   copyToClipboard(output)
   message.success('已复制到剪贴板')
 }
